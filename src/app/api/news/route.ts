@@ -13,7 +13,6 @@ export async function GET() {
     );
 
     const newsResults = await Promise.all(newsPromises);
-    console.log(newsResults);
     const allNews = newsResults
       .map((result) => result.news || [])
       .flat()

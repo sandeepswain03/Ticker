@@ -1,9 +1,12 @@
+import { QueryClient } from '@tanstack/react-query';
 import type { Metadata } from "next";
 import { DM_Sans } from "next/font/google";
-import "./globals.css";
 import { twMerge } from "tailwind-merge";
+import "./globals.css";
+import Provider from './Provider';
 
 const dmSans = DM_Sans({ subsets: ["latin"] });
+const queryClient = new QueryClient();
 
 export const metadata: Metadata = {
   title: "ticker: Fundametal Stock Analysis",
@@ -18,7 +21,9 @@ export default function RootLayout({
   return (
     <html lang="en" className="relative">
       <body className={twMerge(dmSans.className, "antialiased bg-[#EAEEFE]")}>
-        {children}
+        <Provider>
+          {children}
+        </Provider>
       </body>
     </html>
   );

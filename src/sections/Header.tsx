@@ -1,19 +1,19 @@
-import ArrowRight from "@/assets/arrow-right.svg";
+
 import Logo from "@/assets/logosaas.png";
 import Image from "next/image";
 import MenuIcon from "@/assets/menu.svg";
+import Link from "next/link";
 
 export const Header = () => {
   return (
     <header className="sticky top-0 backdrop-blur-sm z-20">
       <div className="flex justify-center items-center py-3 bg-black text-white text-sm gap-3">
-        <p className="text-white/60 hidden md:block">
-          Streamline your workflow and boost your productivity
+        <p className="text-white/60 hidden md:flex gap-4">
+          <p className="text-blue-400">SENSEX <span className="text-white bg-blue-600 px-1 rounded">75939.21</span> <span className="text-red-500">▼-199.76 (-0.26%)</span></p>
+          <p className="text-blue-400">NIFTY <span className="text-white bg-blue-600 px-1 rounded">22929.25</span> <span className="text-red-500">▼-102.15 (-0.44%)</span></p>
+          <p className="text-blue-400">BANKNIFTY <span className="text-white bg-blue-600 px-1 rounded">49099.45</span> <span className="text-red-500">▼-260.40 (-0.53%)</span></p>
+          <p className="text-blue-400">NIFTYIT <span className="text-white bg-blue-600 px-1 rounded">41311.15</span> <span className="text-red-500">▼-4.40 (-0.01%)</span></p>
         </p>
-        <div className="inline-flex gap-1 items-center">
-          <p>Get started for free</p>
-          <ArrowRight className="h-4 w-4 inline-flex justify-center items-center" />
-        </div>
       </div>
       <div className="py-5">
         <div className="container">
@@ -21,11 +21,11 @@ export const Header = () => {
             <Image src={Logo} alt="Saas Logo" height={40} width={40} />
             <MenuIcon className="h-5 w-5 md:hidden" />
             <nav className="hidden md:flex gap-6 text-black/60 items-center">
-              <a href="#">Market</a>
-              <a href="#">IPO</a>
-              <a href="#">Screener</a>
-              <a href="#">Bundles</a>
-              <a href="#">Sector</a>
+              <Link href="/market">Market</Link>
+              <Link href="#">IPO</Link>
+              <Link href="#">Screener</Link>
+              <Link href="#">Bundles</Link>
+              <Link href="#">Sector</Link>
               <button className="bg-black text-white px-4 py-2 rounded-lg font-medium inline-flex align-items justify-center tracking-tight">
                 Get for free
               </button>
