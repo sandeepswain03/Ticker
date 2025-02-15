@@ -21,10 +21,10 @@ export const CallToAction = () => {
     >
       <div className="container">
         <div className="section-heading relative">
-          <h2 className="section-title">Sign up for free today</h2>
+          <h2 className="section-title">Start Investing Today</h2>
           <p className="section-description mt-5">
-            Celebrate the joy of accomplishment with an app designed to track
-            your progress and motivate your efforts.
+            Begin your investment journey with our powerful stock screening tool.
+            Find the best opportunities and make informed decisions for your portfolio.
           </p>
           <motion.img
             src={starImage.src}
@@ -46,9 +46,9 @@ export const CallToAction = () => {
           />
         </div>
         <div className="flex gap-2 mt-10 justify-center">
-          <button className="btn btn-primary">Get for free</button>
+          <button className="btn btn-primary">Start Screening</button>
           <button className="btn btn-text gap-1">
-            <span>Learn more</span>
+            <span>View Markets</span>
             <ArrowRight className="h-5 w-5" />
           </button>
         </div>

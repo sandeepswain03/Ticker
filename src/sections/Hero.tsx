@@ -3,16 +3,22 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Input } from "@/components/ui/input";
-import { Search, Loader2 } from "lucide-react";
+import { Search } from "lucide-react";
 import { useDebounce } from "@/hooks/use-debounce";
 
-const Hero = () => {
+interface Stock {
+  id: string;
+  symbol: string;
+  name: string;
+}
+
+export const Hero = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [suggestions, setSuggestions] = useState([]);
+  const [suggestions, setSuggestions] = useState<Stock[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const fetchSuggestions = async (query) => {
+  const fetchSuggestions = async (query: string) => {
     setIsLoading(true);
     try {
       const response = await fetch(`http://localhost:8000/api/stock`);
@@ -23,8 +29,8 @@ const Hero = () => {
         return;
       }
 
-      const filteredSuggestions = data.filter((stock) =>
-        stock.name.toLowerCase().includes(query.toLowerCase()) ||
+      const filteredSuggestions = data.filter((stock: Stock) =>
+        stock.symbol.toLowerCase().includes(query.toLowerCase()) ||
         stock.symbol.toLowerCase().includes(query.toLowerCase())
       ).slice(0, 5);
 
@@ -47,7 +53,7 @@ const Hero = () => {
     }
   }, [debouncedSearchTerm]);
 
-  const handleSelection = (symbol) => {
+  const handleSelection = (symbol: string) => {
     setSearchTerm(symbol);
     setShowSuggestions(false);
     window.location.href = `/${symbol}`;
@@ -56,7 +62,6 @@ const Hero = () => {
   const trendingStocks = [
     { symbol: "ITC", name: "ITC Limited" },
     { symbol: "RELIANCE", name: "Reliance Industries" },
-    { symbol: "HDFCBANK", name: "HDFC Bank" },
     { symbol: "YESBANK", name: "Yes Bank" },
     { symbol: "IRCTC", name: "Indian Railway Catering" }
   ];
@@ -65,27 +70,27 @@ const Hero = () => {
     <motion.section
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="min-h-[85vh] bg-gradient-to-b from-[#E8EFFF] via-[#7B96FF] to-[#3461FF] overflow-hidden relative"
+      className="h-screen bg-gradient-to-br from-[#E8EFFF] via-[#7B96FF] to-[#3461FF] overflow-hidden relative"
     >
-      <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]" />
+      <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))] opacity-50" />
 
       <div className="container h-full flex items-start justify-center relative">
-        <div className="flex flex-col items-center max-w-3xl mx-auto pt-10">
+        <div className="flex flex-col items-center max-w-4xl mx-auto pt-16 md:pt-20">
           <motion.button
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className="group relative grid overflow-hidden rounded-full px-2 py-1 shadow-[0_1000px_0_0_hsl(0_0%_100%/0.1)_inset] transition-colors duration-200"
+            className="group relative grid overflow-hidden rounded-full px-3 py-1.5 shadow-lg hover:shadow-xl transition-all duration-300 bg-white/90 backdrop-blur-sm"
           >
-            <span className="z-10 p-1 text-sm text-[#1A1A1A] bg-[#3461FF]/20 rounded-full flex items-center">
+            <span className="z-10 text-sm text-[#1A1A1A] flex items-center font-medium">
               <motion.span
                 animate={{ scale: [1, 1.2, 1] }}
                 transition={{ duration: 1, repeat: Infinity, repeatDelay: 3 }}
-                className="px-2 py-[0.5px] h-[18px] tracking-wide flex items-center justify-center rounded-full bg-[#3461FF] text-[9px] font-medium mr-2 text-white"
+                className="px-2.5 py-1 h-[20px] tracking-wide flex items-center justify-center rounded-full bg-[#3461FF] text-[10px] font-semibold mr-2 text-white"
               >
                 NEW
               </motion.span>
-              Explore the 2024 recap
+              Explore the 2024 Market Recap
             </span>
           </motion.button>
 
@@ -93,18 +98,20 @@ const Hero = () => {
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.3 }}
-            className="text-5xl md:text-7xl font-bold tracking-tighter text-[#1A1A1A] mt-6 text-center"
+            className="text-6xl md:text-8xl font-bold tracking-tight text-[#1A1A1A] mt-8 text-center leading-tight"
           >
             Investing Ka
             <br />
-            Search Engine
+            <span className="bg-gradient-to-r from-[#3461FF] to-[#8B9FFF] text-transparent bg-clip-text">
+              Search Engine
+            </span>
           </motion.h1>
 
           <motion.p
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.4 }}
-            className="text-xl text-[#1A1A1A]/80 tracking-tight mt-6 text-center max-w-2xl"
+            className="text-xl md:text-2xl text-[#1A1A1A]/90 tracking-tight mt-8 text-center max-w-2xl font-medium"
           >
             The modern Stock Screener that helps you find the best stocks for your investment portfolio.
           </motion.p>
@@ -113,7 +120,7 @@ const Hero = () => {
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.5 }}
-            className="w-full max-w-2xl mt-10"
+            className="w-full max-w-2xl mt-12"
           >
             <div className="relative">
               <Input
@@ -123,19 +130,15 @@ const Hero = () => {
                   setSearchTerm(e.target.value);
                   setShowSuggestions(true);
                 }}
-                placeholder="Type a company name or stock symbol"
-                className="w-full h-14 pl-12 pr-4 rounded-full bg-white/95 shadow-lg border-0 focus-visible:ring-2 focus-visible:ring-white/50 transition-all duration-200 hover:shadow-xl"
+                placeholder="Search company name or stock symbol..."
+                className="w-full h-16 pl-14 pr-6 rounded-2xl bg-white/95 shadow-xl border-0 focus-visible:ring-2 focus-visible:ring-[#3461FF] transition-all duration-300 hover:shadow-2xl text-lg"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && searchTerm) {
                     handleSelection(searchTerm);
                   }
                 }}
               />
-              {isLoading ? (
-                <Loader2 className="absolute left-4 top-1/2 transform -translate-y-1/2 text-[#3461FF] h-6 w-6 animate-spin" />
-              ) : (
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-[#3461FF] h-6 w-6" />
-              )}
+              <Search className="absolute left-5 top-1/2 transform -translate-y-1/2 text-[#3461FF] h-6 w-6" />
 
               <AnimatePresence>
                 {showSuggestions && suggestions.length > 0 && (
@@ -143,7 +146,7 @@ const Hero = () => {
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
-                    className="absolute w-full mt-2 bg-white rounded-lg shadow-lg max-h-60 overflow-y-auto z-50"
+                    className="absolute w-full mt-3 bg-white rounded-xl shadow-2xl max-h-80 overflow-y-auto z-50 border border-gray-100"
                   >
                     {suggestions.map((stock, index) => (
                       <motion.div
@@ -151,11 +154,11 @@ const Hero = () => {
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.05 }}
                         key={stock.id}
-                        className="px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors duration-200 border-b last:border-b-0"
+                        className="px-5 py-4 hover:bg-gray-50 cursor-pointer transition-colors duration-200 border-b last:border-b-0"
                         onClick={() => handleSelection(stock.symbol)}
                       >
-                        <div className="font-medium text-[#1A1A1A]">{stock.symbol}</div>
-                        <div className="text-sm text-gray-600">{stock.name}</div>
+                        <div className="font-semibold text-[#1A1A1A] text-lg">{stock.symbol}</div>
+                        <div className="text-base text-gray-600 mt-1">{stock.name}</div>
                       </motion.div>
                     ))}
                   </motion.div>
@@ -167,10 +170,10 @@ const Hero = () => {
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.6 }}
-              className="flex gap-3 mt-6 justify-center flex-wrap items-center"
+              className="flex gap-4 mt-8 justify-center flex-wrap items-center"
             >
-              <strong className="text-lg text-[#1A1A1A] tracking-tight">
-                What&apos;s Trending:
+              <strong className="text-lg text-[#1A1A1A] tracking-tight font-semibold">
+                Trending Stocks:
               </strong>
               {trendingStocks.map((stock, index) => (
                 <motion.button
@@ -181,7 +184,7 @@ const Hero = () => {
                   whileTap={{ scale: 0.95 }}
                   onClick={() => handleSelection(stock.symbol)}
                   key={stock.symbol}
-                  className="px-4 py-2 rounded-full bg-white/20 text-sm text-white hover:bg-white/30 transition-colors duration-200 backdrop-blur-sm"
+                  className="px-5 py-2.5 rounded-full bg-white/90 text-sm font-medium text-[#3461FF] hover:bg-white hover:shadow-lg transition-all duration-300 backdrop-blur-sm"
                 >
                   {stock.symbol}
                 </motion.button>
@@ -193,5 +196,3 @@ const Hero = () => {
     </motion.section>
   );
 };
-
-export default Hero;

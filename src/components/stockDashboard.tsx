@@ -50,8 +50,8 @@ interface StockAPIData {
 
 interface StockDashboardProps {
     data: StockAPIData
-    startDate:string
-    endDate:string
+    startDate: string
+    endDate: string
 }
 
 interface PredictionError {
@@ -89,14 +89,14 @@ interface ApiResponse {
 }
 
 interface PredictionData {
-    date:string;
+    date: string;
     actualPrice: number | null;
     predictedPrice: number;
 }
 
 
-const StockDashboard: React.FC<StockDashboardProps> = ({ data,startDate,endDate }) => {
- 
+const StockDashboard: React.FC<StockDashboardProps> = ({ data, startDate, endDate }) => {
+
     const params = useParams()
     const [activeTab, setActiveTab] = useState("overview")
     const [hoveredData, setHoveredData] = useState<any>(null)
@@ -164,7 +164,7 @@ const StockDashboard: React.FC<StockDashboardProps> = ({ data,startDate,endDate 
         if (activeTab === "technical") {
             fetchPredictionData(predictionDays);
         }
-    }, []);
+    }, [predictionDays]); // Added predictionDays as dependency
 
     // Effect to handle tab changes
     useEffect(() => {
@@ -195,9 +195,10 @@ const StockDashboard: React.FC<StockDashboardProps> = ({ data,startDate,endDate 
         return null
     }
 
-    
+
     const handlePredictionDaysChange = (value: string) => {
         setPredictionDays(value);
+        fetchPredictionData(value); // Call API when days change
     };
 
     const renderTechnicalContent = () => {
@@ -256,7 +257,7 @@ const StockDashboard: React.FC<StockDashboardProps> = ({ data,startDate,endDate 
                         />
                         <Tooltip content={<CustomTooltip />} />
                         <Legend />
-                        <Line   
+                        <Line
                             type="monotone"
                             dataKey="actualPrice"
                             stroke="#2563eb"
@@ -316,7 +317,7 @@ const StockDashboard: React.FC<StockDashboardProps> = ({ data,startDate,endDate 
             </div>
 
             {/* Main Content */}
-          
+
             <Tabs defaultValue="overview" className="space-y-4" onValueChange={setActiveTab}>
                 <TabsList className="bg-white p-1 rounded-lg">
                     <TabsTrigger value="overview" className="px-6 border-b-2 border-transparent">
@@ -328,7 +329,7 @@ const StockDashboard: React.FC<StockDashboardProps> = ({ data,startDate,endDate 
                 </TabsList>
 
                 <TabsContent value="overview" className="space-y-4">
- 
+
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         <Card className="hover:shadow-md transition-shadow">
                             <CardHeader>
@@ -442,14 +443,14 @@ const StockDashboard: React.FC<StockDashboardProps> = ({ data,startDate,endDate 
                             <CardTitle>Stock Price History and Predictions</CardTitle>
                             <Select
                                 value={predictionDays}
-                                onValueChange={setPredictionDays}
+                                onValueChange={handlePredictionDaysChange}
                                 disabled={isLoading}
                             >
                                 <SelectTrigger className="w-32">
                                     <SelectValue placeholder="Prediction days" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {[1, 2, 3, 4, 5].map(days => (
+                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(days => (
                                         <SelectItem key={days} value={days.toString()}>
                                             {days} {days === 1 ? 'day' : 'days'}
                                         </SelectItem>

@@ -22,8 +22,7 @@ export const Header = () => {
             <MenuIcon className="h-5 w-5 md:hidden" />
             <nav className="hidden md:flex gap-6 text-black/60 items-center">
               <Link href="/market">Market</Link>
-              <Link href="#">IPO</Link>
-              <Link href="#">Screener</Link>
+              <Link href="/news">News</Link>
               <Link href="#">Bundles</Link>
               <Link href="#">Sector</Link>
               <button className="bg-black text-white px-4 py-2 rounded-lg font-medium inline-flex align-items justify-center tracking-tight">
