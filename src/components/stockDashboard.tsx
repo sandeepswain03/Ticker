@@ -1,14 +1,18 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import axios from "axios"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart, LineChart, Line, Legend } from "recharts"
+import {
+    XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+    Area, AreaChart, LineChart, Line, Legend
+} from "recharts"
 import { ArrowUpFromLine, TrendingUp, TrendingDown, DollarSign, Activity } from "lucide-react"
 import { useParams } from "next/navigation"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 interface StockDataPoint {
     date: string
@@ -73,51 +77,74 @@ const formatDate = (dateStr: string) => {
 }
 
 interface FuturePredictions {
-    dates: string[]; // Array of dates for future predictions
-    predicted_prices: number[]; // Array of predicted prices for future dates
+    dates: string[]
+    predicted_prices: number[]
 }
 
 interface HistoricalData {
-    dates: string[]; // Array of dates for historical data
-    actual_prices: number[]; // Array of actual prices for historical dates
-    predicted_prices: number[]; // Array of predicted prices for historical dates
+    dates: string[]
+    actual_prices: number[]
+    predicted_prices: number[]
 }
 
 interface ApiResponse {
-    future_predictions: FuturePredictions; // Future predictions data
-    historical_data: HistoricalData; // Historical data
+    future_predictions: FuturePredictions
+    historical_data: HistoricalData
 }
 
 interface PredictionData {
-    date: string;
-    actualPrice: number | null;
-    predictedPrice: number;
+    date: string
+    actualPrice: number | null
+    predictedPrice: number
 }
 
-
 const StockDashboard: React.FC<StockDashboardProps> = ({ data, startDate, endDate }) => {
-
     const params = useParams()
     const [activeTab, setActiveTab] = useState("overview")
-    const [hoveredData, setHoveredData] = useState<any>(null)
     const [predictionDays, setPredictionDays] = useState("5")
     const [chartData, setChartData] = useState<PredictionData[]>([])
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [apiError, setApiError] = useState<string | null>(null)
+    const [isRetrying, setIsRetrying] = useState(false)
     const { summaryDetail, price } = data.stockData.data
-    const historicalData = data.historicalData.data
+
+    const filteredHistoricalData = useMemo(() => {
+        const start = new Date(startDate)
+        const end = new Date(endDate)
+        return data.historicalData.data.filter(item => {
+            const itemDate = new Date(item.date)
+            return itemDate >= start && itemDate <= end
+        })
+    }, [data.historicalData.data, startDate, endDate])
+
+    const filteredPredictionData = useMemo(() => {
+        if (!chartData.length) return []
+        const start = new Date(startDate)
+        const end = new Date(endDate)
+
+        return chartData.filter(item => {
+            const itemDate = new Date(item.date)
+            return (itemDate >= start && itemDate <= end) ||
+                (itemDate > new Date())
+        })
+    }, [chartData, startDate, endDate])
 
     const fetchPredictionData = async (days: string) => {
         setIsLoading(true)
         setError(null)
+        setApiError(null)
+        setIsRetrying(true)
 
         try {
             const response = await axios.get<ApiResponse>(`http://127.0.0.1:5000/predict`, {
                 params: {
                     symbol: params.symbol as string,
-                    future_days: days
+                    future_days: days,
+                    start_date: startDate,
+                    end_date: endDate
                 },
-                timeout: 10000,
+                timeout: 15000,
                 headers: {
                     'Accept': 'application/json',
                 }
@@ -125,21 +152,27 @@ const StockDashboard: React.FC<StockDashboardProps> = ({ data, startDate, endDat
 
             const responseData = response.data;
 
-            // Map historical data
+            if (!responseData.historical_data || !responseData.future_predictions) {
+                throw new Error('Invalid response format from server');
+            }
+
             const historicalMapped = responseData.historical_data.dates.map((date, index) => ({
-                date,
+                date: new Date(date).toISOString(),
                 actualPrice: responseData.historical_data.actual_prices[index],
                 predictedPrice: responseData.historical_data.predicted_prices[index]
             }));
 
-            // Map future predictions
             const futureMapped = responseData.future_predictions.dates.map((date, index) => ({
-                date,
+                date: new Date(date).toISOString(),
                 actualPrice: null,
                 predictedPrice: responseData.future_predictions.predicted_prices[index]
             }));
 
-            setChartData([...historicalMapped, ...futureMapped]);
+            const combinedData = [...historicalMapped, ...futureMapped].sort((a, b) =>
+                new Date(a.date).getTime() - new Date(b.date).getTime()
+            );
+
+            setChartData(combinedData);
         } catch (error) {
             let errorMessage = 'Failed to fetch prediction data';
 
@@ -153,41 +186,49 @@ const StockDashboard: React.FC<StockDashboardProps> = ({ data, startDate, endDat
                 }
             }
 
+            setApiError(errorMessage);
             setError(errorMessage);
         } finally {
             setIsLoading(false);
+            setIsRetrying(false);
         }
     };
 
-    // Effect to handle prediction days changes
     useEffect(() => {
-        if (activeTab === "technical") {
+        if (activeTab === "technical" && !isRetrying) {
             fetchPredictionData(predictionDays);
         }
-    }, [predictionDays]); // Added predictionDays as dependency
-
-    // Effect to handle tab changes
-    useEffect(() => {
-        if (activeTab === "technical" && chartData.length === 0 && !error) {
-            fetchPredictionData(predictionDays);
-        }
-    }, [activeTab]);
-
+    }, [startDate, endDate, activeTab, predictionDays]);
 
     const CustomTooltip = ({ active, payload, label }: any) => {
         if (active && payload && payload.length) {
             const data = payload[0].payload
+            const date = new Date(label)
+            const isDateInFuture = date > new Date()
+
             return (
                 <div className="bg-white p-4 rounded-lg shadow-lg border">
-                    <p className="text-sm font-medium">{formatDate(label)}</p>
-                    <div className="mt-2 space-y-1">
-                        {data.actualPrice !== null && <p className="text-sm">Actual Price: ₹{data.actualPrice.toFixed(2)}</p>}
-                        {data.predictedPrice !== null && (
-                            <p className="text-sm">Predicted Price: ₹{data.predictedPrice.toFixed(2)}</p>
+                    <p className="text-sm font-semibold">
+                        {date.toLocaleDateString("en-IN", {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric"
+                        })}
+                        {isDateInFuture && " (Predicted)"}
+                    </p>
+                    <div className="mt-2 space-y-2">
+                        {data.actualPrice !== null && (
+                            <p className="text-sm flex justify-between">
+                                <span className="text-gray-600">Actual:</span>
+                                <span className="font-medium">₹{Number(data.actualPrice).toFixed(2)}</span>
+                            </p>
                         )}
-                        {data.high && <p className="text-sm">High: ₹{data.high.toFixed(2)}</p>}
-                        {data.low && <p className="text-sm">Low: ₹{data.low.toFixed(2)}</p>}
-                        {data.volume && <p className="text-sm">Volume: {formatLargeNumber(data.volume)}</p>}
+                        {data.predictedPrice !== null && (
+                            <p className="text-sm flex justify-between">
+                                <span className="text-gray-600">Predicted:</span>
+                                <span className="font-medium">₹{Number(data.predictedPrice).toFixed(2)}</span>
+                            </p>
+                        )}
                     </div>
                 </div>
             )
@@ -195,10 +236,9 @@ const StockDashboard: React.FC<StockDashboardProps> = ({ data, startDate, endDat
         return null
     }
 
-
     const handlePredictionDaysChange = (value: string) => {
         setPredictionDays(value);
-        fetchPredictionData(value); // Call API when days change
+        fetchPredictionData(value);
     };
 
     const renderTechnicalContent = () => {
@@ -213,23 +253,26 @@ const StockDashboard: React.FC<StockDashboardProps> = ({ data, startDate, endDat
             );
         }
 
-        if (error) {
+        if (apiError) {
             return (
-                <div className="h-96 flex items-center justify-center">
-                    <div className="text-center">
-                        <p className="text-red-500 mb-4">{error}</p>
+                <div className="h-96">
+                    <Alert variant="destructive" className="mb-4">
+                        <AlertDescription>{apiError}</AlertDescription>
+                    </Alert>
+                    <div className="flex justify-center mt-4">
                         <button
                             onClick={() => fetchPredictionData(predictionDays)}
                             className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+                            disabled={isRetrying}
                         >
-                            Retry
+                            {isRetrying ? 'Retrying...' : 'Retry'}
                         </button>
                     </div>
                 </div>
             );
         }
 
-        if (!chartData.length) {
+        if (!filteredPredictionData.length) {
             return (
                 <div className="h-96 flex items-center justify-center">
                     <p className="text-gray-600">No data available for the selected period</p>
@@ -241,19 +284,23 @@ const StockDashboard: React.FC<StockDashboardProps> = ({ data, startDate, endDat
             <div className="h-96">
                 <ResponsiveContainer width="100%" height="100%">
                     <LineChart
-                        data={chartData.filter(item => new Date(item.date) >= new Date(startDate))}
-                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                        data={filteredPredictionData}
+                        margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
                     >
-                        <CartesianGrid strokeDasharray="3 3" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                         <XAxis
                             dataKey="date"
                             tick={{ fontSize: 12 }}
-                            interval="preserveStartEnd"
-                            tickFormatter={formatDate}
+                            tickFormatter={(date) => new Date(date).toLocaleDateString("en-IN", {
+                                day: "2-digit",
+                                month: "short"
+                            })}
+                            minTickGap={50}
                         />
                         <YAxis
                             tickFormatter={(value) => `₹${value}`}
                             domain={['auto', 'auto']}
+                            tick={{ fontSize: 12 }}
                         />
                         <Tooltip content={<CustomTooltip />} />
                         <Legend />
@@ -263,7 +310,8 @@ const StockDashboard: React.FC<StockDashboardProps> = ({ data, startDate, endDat
                             stroke="#2563eb"
                             name="Actual Price"
                             strokeWidth={2}
-                            dot={{ r: 4 }}
+                            dot={{ r: 2 }}
+                            activeDot={{ r: 6 }}
                         />
                         <Line
                             type="monotone"
@@ -271,7 +319,8 @@ const StockDashboard: React.FC<StockDashboardProps> = ({ data, startDate, endDat
                             stroke="#dc2626"
                             name="Predicted Price"
                             strokeWidth={2}
-                            dot={{ r: 4 }}
+                            dot={{ r: 2 }}
+                            activeDot={{ r: 6 }}
                             strokeDasharray="5 5"
                         />
                     </LineChart>
@@ -279,7 +328,6 @@ const StockDashboard: React.FC<StockDashboardProps> = ({ data, startDate, endDat
             </div>
         );
     };
-
 
     return (
         <div className="min-h-screen bg-background p-4 space-y-4">
@@ -329,9 +377,8 @@ const StockDashboard: React.FC<StockDashboardProps> = ({ data, startDate, endDat
                 </TabsList>
 
                 <TabsContent value="overview" className="space-y-4">
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <Card className="hover:shadow-md transition-shadow">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <Card className="hover:shadow-lg transition-all duration-300 border-l-4 border-blue-500">
                             <CardHeader>
                                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                                     <ArrowUpFromLine className="h-4 w-4 text-blue-500" />
@@ -339,16 +386,16 @@ const StockDashboard: React.FC<StockDashboardProps> = ({ data, startDate, endDat
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-4">
                                     <div>
-                                        <div className="text-sm text-muted-foreground">Day&apos;s Range</div>
-                                        <div className="font-medium mt-1">
+                                        <div className="text-sm text-muted-foreground mb-1">Day&apos;s Range</div>
+                                        <div className="font-medium text-lg">
                                             ₹{summaryDetail.dayLow.toFixed(2)} - ₹{summaryDetail.dayHigh.toFixed(2)}
                                         </div>
                                     </div>
                                     <div>
-                                        <div className="text-sm text-muted-foreground">52 Week Range</div>
-                                        <div className="font-medium mt-1">
+                                        <div className="text-sm text-muted-foreground mb-1">52 Week Range</div>
+                                        <div className="font-medium text-lg">
                                             ₹{summaryDetail.fiftyTwoWeekLow.toFixed(2)} - ₹{summaryDetail.fiftyTwoWeekHigh.toFixed(2)}
                                         </div>
                                     </div>
@@ -356,7 +403,7 @@ const StockDashboard: React.FC<StockDashboardProps> = ({ data, startDate, endDat
                             </CardContent>
                         </Card>
 
-                        <Card className="hover:shadow-md transition-shadow">
+                        <Card className="hover:shadow-lg transition-all duration-300 border-l-4 border-green-500">
                             <CardHeader>
                                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                                     <DollarSign className="h-4 w-4 text-green-500" />
@@ -364,59 +411,81 @@ const StockDashboard: React.FC<StockDashboardProps> = ({ data, startDate, endDat
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-4">
                                     <div>
-                                        <div className="text-sm text-muted-foreground">Market Cap</div>
-                                        <div className="font-medium mt-1">₹{formatLargeNumber(summaryDetail.marketCap)}</div>
+                                        <div className="text-sm text-muted-foreground mb-1">Market Cap</div>
+                                        <div className="font-medium text-lg">₹{formatLargeNumber(summaryDetail.marketCap)}</div>
                                     </div>
                                     <div>
-                                        <div className="text-sm text-muted-foreground">P/E Ratio</div>
-                                        <div className="font-medium mt-1">{summaryDetail.trailingPE.toFixed(2)}</div>
+                                        <div className="text-sm text-muted-foreground mb-1">P/E Ratio</div>
+                                        <div className="font-medium text-lg">{summaryDetail.trailingPE.toFixed(2)}</div>
                                     </div>
                                 </div>
                             </CardContent>
                         </Card>
 
-                        <Card className="hover:shadow-md transition-shadow">
+                        <Card className="hover:shadow-lg transition-all duration-300 border-l-4 border-purple-500">
                             <CardHeader>
                                 <CardTitle className="text-sm font-medium flex items-center gap-2">
-                                    <Activity className="h-4 w-4 text-blue-500" />
+                                    <Activity className="h-4 w-4 text-purple-500" />
                                     Volume Analysis
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-4">
                                     <div>
-                                        <div className="text-sm text-muted-foreground">Volume</div>
-                                        <div className="font-medium mt-1">{formatLargeNumber(summaryDetail.volume)}</div>
+                                        <div className="text-sm text-muted-foreground mb-1">Volume</div>
+                                        <div className="font-medium text-lg">{formatLargeNumber(summaryDetail.volume)}</div>
                                     </div>
                                     <div>
-                                        <div className="text-sm text-muted-foreground">Avg. Volume</div>
-                                        <div className="font-medium mt-1">{formatLargeNumber(summaryDetail.averageVolume)}</div>
+                                        <div className="text-sm text-muted-foreground mb-1">Avg. Volume</div>
+                                        <div className="font-medium text-lg">{formatLargeNumber(summaryDetail.averageVolume)}</div>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="hover:shadow-lg transition-all duration-300 border-l-4 border-orange-500">
+                            <CardHeader>
+                                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                                    <TrendingUp className="h-4 w-4 text-orange-500" />
+                                    Performance
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-4">
+                                    <div>
+                                        <div className="text-sm text-muted-foreground mb-1">Today&apos;s Change</div>
+                                        <div className={`font-medium text-lg ${price.regularMarketChange >= 0 ? "text-green-600" : "text-red-600"}`}>
+                                            {price.regularMarketChange >= 0 ? "+" : ""}{price.regularMarketChange.toFixed(2)}%
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div className="text-sm text-muted-foreground mb-1">Current Price</div>
+                                        <div className="font-medium text-lg">₹{price.regularMarketPrice.toFixed(2)}</div>
                                     </div>
                                 </div>
                             </CardContent>
                         </Card>
                     </div>
 
-                    <Card className="h-[400px]">
+                    <Card className="h-[450px] hover:shadow-lg transition-all duration-300">
                         <CardHeader>
-                            <CardTitle className="text-sm font-medium flex items-center gap-2">
-                                <TrendingUp className="h-4 w-4 text-blue-500" />
-                                Price Chart
+                            <CardTitle className="text-base font-medium flex items-center gap-2">
+                                <TrendingUp className="h-5 w-5 text-blue-500" />
+                                Historical Price Chart
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <ResponsiveContainer width="100%" height={300}>
+                            <ResponsiveContainer width="100%" height={350}>
                                 <AreaChart
-                                    data={historicalData}
-                                    onMouseMove={(data) => data.activePayload && setHoveredData(data.activePayload[0].payload)}
-                                    onMouseLeave={() => setHoveredData(null)}
+                                    data={filteredHistoricalData}
+                                    margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
                                 >
                                     <defs>
                                         <linearGradient id="colorClose" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3} />
-                                            <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
+                                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                                         </linearGradient>
                                     </defs>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -426,7 +495,8 @@ const StockDashboard: React.FC<StockDashboardProps> = ({ data, startDate, endDat
                                     <Area
                                         type="monotone"
                                         dataKey="close"
-                                        stroke="#2563eb"
+                                        stroke="#3b82f6"
+                                        strokeWidth={2}
                                         fillOpacity={1}
                                         fill="url(#colorClose)"
                                         name="Price"

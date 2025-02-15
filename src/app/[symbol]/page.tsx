@@ -52,29 +52,43 @@ export default function StockPage({ params }: PageProps) {
   }, [params.symbol, startDate, endDate]);
 
   if (loading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#3461FF]"></div>
+      </div>
+    );
   }
 
   if (error) {
-    return <div className="flex items-center justify-center min-h-screen text-red-500">{error}</div>;
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <div className="text-red-500 text-xl font-semibold mb-4">Oops! Something went wrong</div>
+        <div className="text-gray-600">{error}</div>
+      </div>
+    );
   }
 
   if (!data) {
-    return <div className="flex items-center justify-center min-h-screen">No data available</div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-gray-600 text-lg">No data available for this stock</div>
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-4">
+    <>
       <EnhancedDatePicker
         startDate={startDate}
         endDate={endDate}
-        onStartDateChange={setStartDate}
-        onEndDateChange={setEndDate}
+        onStartDateChange={(date) => date && setStartDate(date)}
+        onEndDateChange={(date) => date && setEndDate(date)}
       />
-      <StockDashboard data={data} 
-      startDate={startDate}
-      endDate={endDate}
+      <StockDashboard
+        data={data}
+        startDate={format(startDate, 'yyyy-MM-dd')}
+        endDate={format(endDate, 'yyyy-MM-dd')}
       />
-    </div>
+    </>
   );
 }

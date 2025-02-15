@@ -37,7 +37,7 @@ const NewsColumn = ({
       {[...new Array(2)].fill(0).map((_, index) => (
         <React.Fragment key={index}>
           {articles.map(({ text, imageSrc, name, username }) => (
-            <div className="card">
+            <div key={name} className="flex flex-col gap-4 p-6 rounded-lg shadow-xl">
               <div>{text}</div>
               <div className="flex items-center gap-2 mt-5">
                 <Image
