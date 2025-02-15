@@ -71,7 +71,10 @@ export default function StockPage({ params }: PageProps) {
         onStartDateChange={setStartDate}
         onEndDateChange={setEndDate}
       />
-      <StockDashboard data={data} />
+      <StockDashboard data={data} 
+      startDate={startDate}
+      endDate={endDate}
+      />
     </div>
   );
 }
